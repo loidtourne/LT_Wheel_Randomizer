@@ -1,0 +1,431 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Wheel Picker</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #191919;
+      color: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+
+    .picker {
+      width: 100%;
+      max-width: 900px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 42px);
+      margin: 8px 0;
+    }
+
+    .subtitle {
+      color: #aaa;
+      margin: 0 0 32px;
+      line-height: 1.5;
+    }
+
+    .wheel-container {
+      position: relative;
+      width: min(100%, 600px);
+      margin: 0 auto;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    #wheel {
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: drop-shadow(0 4px 12px #0006);
+    }
+
+    .pointer {
+      position: absolute;
+      top: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      width: 0;
+      height: 0;
+      border-left: 17px solid transparent;
+      border-right: 17px solid transparent;
+      border-top: 32px solid white;
+      filter: drop-shadow(0 2px 2px #000);
+      pointer-events: none;
+    }
+
+    .spin-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      border: 5px solid #ddd;
+      background: #191919;
+      color: white;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 0 5px #191919;
+    }
+
+    .spin-button:hover {
+      background: #333;
+    }
+
+    button:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+
+    .result {
+      margin: 24px auto;
+      min-height: 36px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #f5c451;
+      overflow-wrap: anywhere;
+    }
+
+    .controls {
+      margin: 40px auto 0;
+      text-align: left;
+    }
+
+    .controls h2,
+    .controls > p {
+      text-align: center;
+    }
+
+    .controls > p {
+      color: #aaa;
+    }
+
+    .item-inputs {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 24px 0;
+    }
+
+    .item-inputs input {
+      width: 100%;
+      min-width: 0;
+      padding: 12px;
+      background: #252525;
+      color: white;
+      border: 1px solid #444;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .item-inputs input:focus {
+      outline: 2px solid #f5c451;
+      border-color: transparent;
+    }
+
+    .reset-button {
+      display: block;
+      margin: 0 auto;
+      padding: 11px 20px;
+      background: #333;
+      border: 1px solid #555;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .reset-button:hover {
+      background: #444;
+    }
+
+    @media (min-width: 650px) {
+      .item-inputs {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 400px) {
+      body {
+        padding: 12px;
+      }
+
+      .spin-button {
+        width: 76px;
+        height: 76px;
+        font-size: 16px;
+        border-width: 4px;
+      }
+
+      .result {
+        font-size: 18px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="picker">
+    <h1>Random Picker</h1>
+    <p class="subtitle">
+      Click the wheel to spin and select a random item!
+    </p>
+
+    <div class="wheel-container">
+      <div class="pointer"></div>
+      <canvas
+        id="wheel"
+        width="600"
+        height="600"
+        role="img"
+        aria-label="Random selection wheel with 25 items"
+      ></canvas>
+      <button
+        id="spinButton"
+        class="spin-button"
+        aria-label="Spin the wheel"
+      >
+        SPIN
+      </button>
+    </div>
+
+    <div id="result" class="result" aria-live="polite">
+      Ready to spin!
+    </div>
+
+    <section class="controls">
+      <h2>Your 25 Items</h2>
+      <p>Edit the items below, then spin the wheel.</p>
+
+      <div id="itemInputs" class="item-inputs"></div>
+
+      <button id="resetButton" class="reset-button">
+        Reset Items
+      </button>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("wheel");
+    const ctx = canvas.getContext("2d");
+    const spinButton = document.getElementById("spinButton");
+    const resetButton = document.getElementById("resetButton");
+    const result = document.getElementById("result");
+    const itemInputs = document.getElementById("itemInputs");
+
+    const defaultItems = [
+      "Apple", "Banana", "Cherry", "Date", "Elderberry",
+      "Fig", "Grape", "Hedgehog", "Ice Cream", "Jellybean",
+      "Kiwi", "Lemon", "Mango", "Nectarine", "Orange",
+      "Peach", "Quince", "Strawberry", "Tangerine", "Umbrella",
+      "Vanilla", "Watermelon", "Xylophone", "Yogurt", "Zebra"
+    ];
+
+    const colors = [
+      "#f94144", "#f8961e", "#f9c74f", "#90be6d", "#43aa8b",
+      "#00a6a6", "#277da1", "#168aad", "#1976d2", "#4895ef",
+      "#4cc9f0", "#4361ee", "#3a86ff", "#5e60ce", "#6930c3",
+      "#8338ec", "#9d4edd", "#c026d3", "#e11d9a", "#f72585",
+      "#ff5d3d", "#ff7b00", "#fb5607", "#e63946", "#ef476f"
+    ];
+
+    const totalItems = 25;
+    const sliceAngle = (Math.PI * 2) / totalItems;
+
+    let items = [...defaultItems];
+    let rotation = 0;
+    let spinning = false;
+
+    // Create editable item fields.
+    function createInputs() {
+      itemInputs.innerHTML = "";
+
+      items.forEach((item, index) => {
+        const input = document.createElement("input");
+
+        input.type = "text";
+        input.value = item;
+        input.placeholder = `Item ${index + 1}`;
+        input.setAttribute("aria-label", `Item ${index + 1}`);
+
+        input.addEventListener("input", () => {
+          items[index] = input.value;
+          drawWheel();
+        });
+
+        itemInputs.appendChild(input);
+      });
+    }
+
+    // Draw the wheel and all 25 segments.
+    function drawWheel() {
+      const center = canvas.width / 2;
+      const radius = center - 8;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(rotation);
+
+      for (let i = 0; i < totalItems; i++) {
+        const start = -Math.PI / 2 + i * sliceAngle;
+        const end = start + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, start, end);
+        ctx.closePath();
+
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+
+        ctx.strokeStyle = "#191919";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Draw each label toward the outer edge.
+        ctx.save();
+        ctx.rotate(start + sliceAngle / 2);
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 13px Arial";
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+
+        const label = items[i].trim() || `Item ${i + 1}`;
+        const maxWidth = radius * 0.43;
+        let displayLabel = label;
+
+        while (
+          ctx.measureText(displayLabel).width > maxWidth &&
+          displayLabel.length > 4
+        ) {
+          displayLabel = displayLabel.slice(0, -2) + "…";
+        }
+
+        ctx.fillText(
+          displayLabel,
+          radius - 18,
+          0,
+          maxWidth
+        );
+
+        ctx.restore();
+      }
+
+      // Outer border.
+      ctx.beginPath();
+      ctx.arc(0, 0, radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "#333";
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // Spin the wheel with a smooth ease-out animation.
+    function spinWheel() {
+      if (spinning) return;
+
+      spinning = true;
+      spinButton.disabled = true;
+      result.textContent = "Spinning...";
+
+      const startRotation = rotation;
+      const startTime = performance.now();
+      const duration = 5000;
+
+      // At least five full rotations plus a random final angle.
+      const extraRotation =
+        (5 + Math.random() * 4) * Math.PI * 2 +
+        Math.random() * Math.PI * 2;
+
+      const targetRotation = startRotation + extraRotation;
+
+      function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+
+        rotation =
+          startRotation +
+          (targetRotation - startRotation) * eased;
+
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+          return;
+        }
+
+        rotation =
+          ((targetRotation % (Math.PI * 2)) + Math.PI * 2) %
+          (Math.PI * 2);
+
+        drawWheel();
+
+        // The pointer is fixed at the top of the wheel.
+        const normalizedAngle =
+          ((-rotation % (Math.PI * 2)) + Math.PI * 2) %
+          (Math.PI * 2);
+
+        const winnerIndex = Math.floor(
+          normalizedAngle / sliceAngle
+        );
+
+        const winner =
+          items[winnerIndex].trim() || `Item ${winnerIndex + 1}`;
+
+        result.textContent = `🎉 Winner: ${winner}`;
+
+        spinning = false;
+        spinButton.disabled = false;
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // Restore the original 25 items.
+    function resetWheel() {
+      if (spinning) return;
+
+      items = [...defaultItems];
+      rotation = 0;
+
+      createInputs();
+      drawWheel();
+
+      result.textContent = "Ready to spin!";
+    }
+
+    spinButton.addEventListener("click", spinWheel);
+    canvas.addEventListener("click", spinWheel);
+    resetButton.addEventListener("click", resetWheel);
+
+    // Initialize the page.
+    createInputs();
+    drawWheel();
+  </script>
+</body>
+</html>
