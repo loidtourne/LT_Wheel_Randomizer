@@ -25,7 +25,7 @@
 
     .picker {
       width: 100%;
-      max-width: 900px;
+      max-width: 700px;
       margin: 0 auto;
       text-align: center;
     }
@@ -76,13 +76,13 @@
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      width: 112px;
-      height: 112px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       border: 5px solid #ddd;
       background: #191919;
       color: white;
-      font-size: 22px;
+      font-size: 20px;
       font-weight: bold;
       cursor: pointer;
       box-shadow: 0 0 0 5px #191919;
@@ -92,7 +92,7 @@
       background: #333;
     }
 
-    button:disabled {
+    .spin-button:disabled {
       opacity: 0.65;
       cursor: not-allowed;
     }
@@ -104,65 +104,6 @@
       font-weight: bold;
       color: #f5c451;
       overflow-wrap: anywhere;
-    }
-
-    .controls {
-      margin: 40px auto 0;
-      text-align: left;
-    }
-
-    .controls h2,
-    .controls > p {
-      text-align: center;
-    }
-
-    .controls > p {
-      color: #aaa;
-    }
-
-    .item-inputs {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin: 24px 0;
-    }
-
-    .item-inputs input {
-      width: 100%;
-      min-width: 0;
-      padding: 12px;
-      background: #252525;
-      color: white;
-      border: 1px solid #444;
-      border-radius: 6px;
-      font-size: 14px;
-    }
-
-    .item-inputs input:focus {
-      outline: 2px solid #f5c451;
-      border-color: transparent;
-    }
-
-    .reset-button {
-      display: block;
-      margin: 0 auto;
-      padding: 11px 20px;
-      background: #333;
-      border: 1px solid #555;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-    }
-
-    .reset-button:hover {
-      background: #444;
-    }
-
-    @media (min-width: 650px) {
-      .item-inputs {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-      }
     }
 
     @media (max-width: 400px) {
@@ -193,6 +134,7 @@
 
     <div class="wheel-container">
       <div class="pointer"></div>
+
       <canvas
         id="wheel"
         width="600"
@@ -200,6 +142,7 @@
         role="img"
         aria-label="Random selection wheel with 25 items"
       ></canvas>
+
       <button
         id="spinButton"
         class="spin-button"
@@ -212,28 +155,15 @@
     <div id="result" class="result" aria-live="polite">
       Ready to spin!
     </div>
-
-    <section class="controls">
-      <h2>Your 25 Items</h2>
-      <p>Edit the items below, then spin the wheel.</p>
-
-      <div id="itemInputs" class="item-inputs"></div>
-
-      <button id="resetButton" class="reset-button">
-        Reset Items
-      </button>
-    </section>
   </main>
 
   <script>
     const canvas = document.getElementById("wheel");
     const ctx = canvas.getContext("2d");
     const spinButton = document.getElementById("spinButton");
-    const resetButton = document.getElementById("resetButton");
     const result = document.getElementById("result");
-    const itemInputs = document.getElementById("itemInputs");
 
-    const defaultItems = [
+    const items = [
       "Apple", "Banana", "Cherry", "Date", "Elderberry",
       "Fig", "Grape", "Hedgehog", "Ice Cream", "Jellybean",
       "Kiwi", "Lemon", "Mango", "Nectarine", "Orange",
@@ -249,35 +179,12 @@
       "#ff5d3d", "#ff7b00", "#fb5607", "#e63946", "#ef476f"
     ];
 
-    const totalItems = 25;
+    const totalItems = items.length;
     const sliceAngle = (Math.PI * 2) / totalItems;
 
-    let items = [...defaultItems];
     let rotation = 0;
     let spinning = false;
 
-    // Create editable item fields.
-    function createInputs() {
-      itemInputs.innerHTML = "";
-
-      items.forEach((item, index) => {
-        const input = document.createElement("input");
-
-        input.type = "text";
-        input.value = item;
-        input.placeholder = `Item ${index + 1}`;
-        input.setAttribute("aria-label", `Item ${index + 1}`);
-
-        input.addEventListener("input", () => {
-          items[index] = input.value;
-          drawWheel();
-        });
-
-        itemInputs.appendChild(input);
-      });
-    }
-
-    // Draw the wheel and all 25 segments.
     function drawWheel() {
       const center = canvas.width / 2;
       const radius = center - 8;
@@ -304,7 +211,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Draw each label toward the outer edge.
         ctx.save();
         ctx.rotate(start + sliceAngle / 2);
 
@@ -313,7 +219,7 @@
         ctx.textAlign = "right";
         ctx.textBaseline = "middle";
 
-        const label = items[i].trim() || `Item ${i + 1}`;
+        const label = items[i];
         const maxWidth = radius * 0.43;
         let displayLabel = label;
 
@@ -334,7 +240,6 @@
         ctx.restore();
       }
 
-      // Outer border.
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, Math.PI * 2);
       ctx.strokeStyle = "#333";
@@ -344,7 +249,6 @@
       ctx.restore();
     }
 
-    // Spin the wheel with a smooth ease-out animation.
     function spinWheel() {
       if (spinning) return;
 
@@ -356,7 +260,6 @@
       const startTime = performance.now();
       const duration = 5000;
 
-      // At least five full rotations plus a random final angle.
       const extraRotation =
         (5 + Math.random() * 4) * Math.PI * 2 +
         Math.random() * Math.PI * 2;
@@ -385,7 +288,6 @@
 
         drawWheel();
 
-        // The pointer is fixed at the top of the wheel.
         const normalizedAngle =
           ((-rotation % (Math.PI * 2)) + Math.PI * 2) %
           (Math.PI * 2);
@@ -394,10 +296,7 @@
           normalizedAngle / sliceAngle
         );
 
-        const winner =
-          items[winnerIndex].trim() || `Item ${winnerIndex + 1}`;
-
-        result.textContent = `🎉 Winner: ${winner}`;
+        result.textContent = `🎉 Winner: ${items[winnerIndex]}`;
 
         spinning = false;
         spinButton.disabled = false;
@@ -406,25 +305,9 @@
       requestAnimationFrame(animate);
     }
 
-    // Restore the original 25 items.
-    function resetWheel() {
-      if (spinning) return;
-
-      items = [...defaultItems];
-      rotation = 0;
-
-      createInputs();
-      drawWheel();
-
-      result.textContent = "Ready to spin!";
-    }
-
     spinButton.addEventListener("click", spinWheel);
     canvas.addEventListener("click", spinWheel);
-    resetButton.addEventListener("click", resetWheel);
 
-    // Initialize the page.
-    createInputs();
     drawWheel();
   </script>
 </body>
